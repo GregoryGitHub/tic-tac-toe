@@ -25,7 +25,7 @@ interface RoomInfo {
   playersCount: number;
 }
 
-const socket: Socket = io("http://localhost:3000"); // Conecta ao backend na porta 3000
+const socket: Socket = io("http://192.168.10.97:3000"); // Conecta ao backend na porta 3000
 
 // Keyframes para as animações
 const gradientShift = keyframes`

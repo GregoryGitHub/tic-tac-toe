@@ -45,7 +45,12 @@ let gravity = 0.3;
 let jumpStrength = -10;
 let groundHeight = 50;
 let gameOver = false;
-let gameSpeed = 1.5; // Velocidade constante do jogo
+let baseSpeed = 1.5; // Velocidade inicial
+let gameSpeed = baseSpeed;
+let score = 0;
+let highScore = localStorage.getItem('highScore') || 0; // Recorde
+let speedIncrease = 0.02; // Aumento de velocidade por obstáculo
+let maxSpeed = 4.0; // Velocidade máxima do jogo
 
 // Jogador
 let player = {
@@ -102,6 +107,12 @@ canvas.addEventListener("touchstart", e => {
 });
 
 function restart() {
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('highScore', highScore);
+  }
+  score = 0;
+  gameSpeed = baseSpeed; // Reset da velocidade
   gameOver = false;
   player.x = 50;
   player.y = canvas.height - groundHeight - 40;
@@ -145,6 +156,10 @@ function update() {
     s.x -= gameSpeed; // usa velocidade constante
     if (s.x + s.w < 0) {
       s.x = canvas.width + Math.random() * 200; // reaparece
+      score += 10; // Aumenta a pontuação quando passa por um obstáculo
+      
+      // Aumenta a velocidade a cada obstáculo
+      gameSpeed = Math.min(gameSpeed + speedIncrease, maxSpeed);
     }
     
     // Verifica colisão usando distância entre círculo e triângulo
@@ -227,10 +242,19 @@ function draw() {
     ctx.fill();
   });
 
+  // Mostra pontuação atual e velocidade
+  ctx.fillStyle = "black";
+  ctx.font = "20px Arial";
+  ctx.fillText(`Score: ${score}`, 20, 30);
+  ctx.fillText(`High Score: ${highScore}`, 20, 60);
+  ctx.fillText(`Velocidade: ${gameSpeed.toFixed(1)}x`, 20, 90);
+
   if (gameOver) {
     ctx.fillStyle = "black";
     ctx.font = "30px Arial";
-    ctx.fillText("GAME OVER!", 300, 200);
+    ctx.fillText("GAME OVER!", 300, 180);
+    ctx.font = "24px Arial";
+    ctx.fillText(`Pontuação Final: ${score}`, 300, 220);
     // Atualiza o texto do botão quando der game over
     jumpButton.textContent = "REINICIAR";
   }
