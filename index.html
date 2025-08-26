@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo Difícil - Plataforma</title>
+  <style>
+    canvas {
+      background: #87CEEB;
+      display: block;
+      margin: auto;
+      border: 2px solid #000;
+      max-width: 100%;
+      height: auto;
+    }
+    #jumpButton {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 30px 40px;
+      font-size: 24px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #jumpButton:active {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game" width="800" height="400"></canvas>
+<button id="jumpButton">PULAR</button>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let gravity = 0.3;
+let jumpStrength = -10;
+let groundHeight = 50;
+let gameOver = false;
+let gameSpeed = 1.5; // Velocidade constante do jogo
+
+// Jogador
+let player = {
+  x: 50,
+  y: canvas.height - groundHeight - 40,
+  w: 40,
+  h: 40,
+  dy: 0,
+  onGround: true,
+  rotation: 0 // para o efeito de rolamento
+};
+
+// Obstáculos (espinhos)
+let spikes = [
+  { x: 400, y: canvas.height - groundHeight - 30, w: 30, h: 30 },
+  { x: 650, y: canvas.height - groundHeight - 30, w: 30, h: 30 }
+];
+
+// Controles
+document.addEventListener("keydown", e => {
+  if (e.code === "Space" && player.onGround && !gameOver) {
+    player.dy = jumpStrength;
+    player.onGround = false;
+  }
+  if (e.code === "Enter" && gameOver) {
+    restart();
+  }
+});
+
+// Botão de pulo
+const jumpButton = document.getElementById("jumpButton");
+
+function jump() {
+  if (player.onGround && !gameOver) {
+    player.dy = jumpStrength;
+    player.onGround = false;
+  } else if (gameOver) {
+    restart();
+  }
+}
+
+jumpButton.addEventListener("click", jump);
+jumpButton.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  jump();
+});
+
+// Suporte para toque no canvas (para reiniciar o jogo)
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  if (gameOver) {
+    restart();
+  }
+});
+
+function restart() {
+  gameOver = false;
+  player.x = 50;
+  player.y = canvas.height - groundHeight - 40;
+  player.dy = 0;
+  player.rotation = 0; // reseta a rotação
+  // Reposiciona os obstáculos
+  spikes.forEach((s, index) => {
+    s.x = canvas.width + (index * 250); // Espaça os obstáculos
+  });
+  // Atualiza o texto do botão
+  jumpButton.textContent = "PULAR";
+}
+
+// Atualizar jogo
+function update() {
+  if (gameOver) return;
+
+  // Gravidade com limite de velocidade
+  player.y += player.dy;
+  player.dy += gravity;
+  
+  // Limita a velocidade máxima de queda
+  if (player.dy > 12) {
+    player.dy = 12;
+  }
+
+  // Atualiza a rotação do jogador
+  if (player.onGround) {
+    player.rotation += gameSpeed * 0.1; // faz a bola girar quando está no chão
+  }
+
+  // Chão
+  if (player.y + player.h >= canvas.height - groundHeight) {
+    player.y = canvas.height - groundHeight - player.h;
+    player.dy = 0;
+    player.onGround = true;
+  }
+
+  // Movimento dos obstáculos e colisões
+  spikes.forEach(s => {
+    s.x -= gameSpeed; // usa velocidade constante
+    if (s.x + s.w < 0) {
+      s.x = canvas.width + Math.random() * 200; // reaparece
+    }
+    
+    // Verifica colisão usando distância entre círculo e triângulo
+    const playerCenterX = player.x + player.w/2;
+    const playerCenterY = player.y + player.h/2;
+    const triangleCenterX = s.x + s.w/2;
+    const triangleCenterY = s.y + s.h/2;
+    
+    // Calcula a distância entre os centros
+    const dx = playerCenterX - triangleCenterX;
+    const dy = playerCenterY - triangleCenterY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Usa um raio de colisão menor para maior precisão
+    if (distance < (player.w/2 + s.w/3)) {
+      gameOver = true;
+    }
+  });
+}
+
+// Desenhar jogo
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Chão
+  ctx.fillStyle = "#228B22";
+  ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+
+  // Jogador (bola com rosto)
+  const centerX = player.x + player.w/2;
+  const centerY = player.y + player.h/2;
+  const radius = player.w/2;
+
+  // Salva o contexto atual
+  ctx.save();
+  
+  // Translada para o centro da bola e aplica a rotação
+  ctx.translate(centerX, centerY);
+  ctx.rotate(player.rotation);
+  ctx.translate(-centerX, -centerY);
+
+  // Desenha a bola
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Olhos
+  ctx.fillStyle = "white";
+  ctx.beginPath();
+  ctx.arc(centerX - 8, centerY - 5, 5, 0, Math.PI * 2);
+  ctx.arc(centerX + 8, centerY - 5, 5, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Pupilas
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(centerX - 8, centerY - 5, 2, 0, Math.PI * 2);
+  ctx.arc(centerX + 8, centerY - 5, 2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sorriso
+  ctx.beginPath();
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.arc(centerX, centerY, 15, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
+  // Restaura o contexto
+  ctx.restore();
+
+  // Obstáculos (triângulos)
+  ctx.fillStyle = "black";
+  spikes.forEach(s => {
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y + s.h); // base esquerda
+    ctx.lineTo(s.x + s.w/2, s.y); // topo
+    ctx.lineTo(s.x + s.w, s.y + s.h); // base direita
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  if (gameOver) {
+    ctx.fillStyle = "black";
+    ctx.font = "30px Arial";
+    ctx.fillText("GAME OVER!", 300, 200);
+    // Atualiza o texto do botão quando der game over
+    jumpButton.textContent = "REINICIAR";
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
